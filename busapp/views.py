@@ -1,22 +1,14 @@
-import logging
 from django.shortcuts import render
 from django.http import JsonResponse
+from django.conf import settings
 import requests
 from geopy.distance import geodesic
 
-logger = logging.getLogger(__name__)
-
-OVERPASS_SERVERS = [
-    "https://overpass-api.de/api/interpreter",
-    "https://overpass.kumi.systems/api/interpreter",
-    "https://overpass.openstreetmap.ru/api/interpreter"
-]
-
-HEADERS = {"User-Agent": "MeuAppBuscaOnibus/1.0"}
-
+# Página inicial
 def index(request):
     return render(request, "index.html")
 
+# Endpoint para buscar a parada mais próxima
 def nearest_stop(request):
     try:
         lat = float(request.GET.get("lat"))
@@ -26,53 +18,45 @@ def nearest_stop(request):
     except (TypeError, ValueError):
         return JsonResponse({"error": "Parâmetros inválidos"}, status=400)
 
-    # --- Geocodificar destino se informado ---
+    # --- Geocodificação usando LocationIQ ---
     if destino:
+        url = "https://us1.locationiq.com/v1/search.php"
+        params = {
+            "key": settings.LOCATIONIQ_API_KEY,
+            "q": destino,
+            "format": "json",
+            "limit": 1
+        }
         try:
-            resp = requests.get(
-                "https://nominatim.openstreetmap.org/search",
-                params={"q": destino, "format": "json", "limit": 1},
-                headers=HEADERS,
-                timeout=20
-            )
+            resp = requests.get(url, params=params, timeout=10)
             resp.raise_for_status()
             data = resp.json()
             if not data:
-                return JsonResponse({"error": f"Destino '{destino}' não encontrado"}, status=404)
-            dest_data = data[0]
-            dest_lat = float(dest_data["lat"])
-            dest_lng = float(dest_data["lon"])
-        except Exception as e:
-            logger.error(f"Erro no Nominatim: {e}")
-            return JsonResponse({"error": "Falha ao geocodificar destino"}, status=500)
+                return JsonResponse({"error": "Destino não encontrado"}, status=404)
+            dest_lat = float(data[0]["lat"])
+            dest_lng = float(data[0]["lon"])
+        except requests.RequestException as e:
+            return JsonResponse({"error": f"Erro no LocationIQ: {str(e)}"}, status=500)
     else:
-        dest_lat, dest_lng = lat, lng
+        dest_lat, dest_lng = lat, lng  # se não informar destino, usar localização atual
 
-    # --- Buscar paradas no Overpass ---
+    # --- Buscar paradas de ônibus via Overpass API ---
     query = f"""
     [out:json][timeout:25];
     node["highway"="bus_stop"](around:{raio_m},{dest_lat},{dest_lng});
     out;
     """
+    try:
+        response = requests.post("https://overpass-api.de/api/interpreter", data={"data": query}, timeout=15)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        return JsonResponse({"error": f"Erro ao buscar paradas: {str(e)}"}, status=500)
 
-    elements = []
-    last_error = None
-    for server in OVERPASS_SERVERS:
-        try:
-            r = requests.post(server, data={"data": query}, headers=HEADERS, timeout=30)
-            r.raise_for_status()
-            elements = r.json().get("elements", [])
-            if elements:
-                break
-        except Exception as e:
-            logger.error(f"Erro no servidor {server}: {e}")
-            last_error = str(e)
-            continue
-
+    elements = response.json().get("elements", [])
     if not elements:
-        return JsonResponse({"error": f"Erro ao buscar paradas no Overpass: {last_error}"}, status=500)
+        return JsonResponse({"error": "Nenhuma parada encontrada"}, status=404)
 
-    # --- Encontrar a parada mais próxima ---
+    # --- Encontrar a parada mais próxima do destino ---
     nearest = min(elements, key=lambda p: geodesic((dest_lat, dest_lng), (p["lat"], p["lon"])).meters)
     name = nearest.get("tags", {}).get("name", "Sem nome")
 
