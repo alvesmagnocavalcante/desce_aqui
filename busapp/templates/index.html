@@ -9,40 +9,35 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <style>
-    body, html { margin:0; padding:0; height:100%; font-family: Arial, sans-serif; overflow:hidden; }
-    #map { height:100%; width:100%; }
-
-    #controls {
-        position:absolute; top:10px; left:50%; transform:translateX(-50%);
-        background: rgba(255,255,255,0.95); padding:10px; border-radius:12px;
-        box-shadow:0 2px 8px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:10px;
-        z-index:1000; width:90%; max-width:400px; box-sizing:border-box;
-    }
-    #destino { padding:10px; font-size:16px; border-radius:8px; border:1px solid #ccc; width:100%; box-sizing:border-box; }
-    button { padding:10px; font-size:16px; border:none; border-radius:8px; background-color:#0196B4; color:white; cursor:pointer; transition:0.3s; }
-    button:hover { background-color:#016e8a; }
-
-    #center-btn {
-        position:absolute; bottom:20px; right:20px; z-index:1001;
-        width:50px; height:50px; border-radius:50%; background-color:#0196B4; color:white;
-        font-size:24px; text-align:center; line-height:50px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.4);
-        transition:0.3s;
-    }
-    #center-btn:hover { background-color:#016e8a; }
-
-    #legenda {
-        position:absolute; bottom:20px; left:20px; z-index:1001;
-        background: rgba(255,255,255,0.9); padding:10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.3);
-        font-size:14px;
-    }
-    .legenda-item { display:flex; align-items:center; gap:5px; margin-bottom:5px; }
-    .legenda-item img { width:24px; height:24px; }
-
-    @media (max-width:600px){
-        #destino, button{ font-size:14px; }
-        #center-btn{ width:40px; height:40px; font-size:20px; line-height:40px; }
-        #legenda{ font-size:12px; }
-    }
+body, html { margin:0; padding:0; height:100%; font-family: Arial, sans-serif; overflow:hidden; }
+#map { height:100%; width:100%; }
+#controls {
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    background: rgba(255,255,255,0.95); padding:10px; border-radius:12px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:10px;
+    z-index:1000; width:90%; max-width:400px; box-sizing:border-box;
+}
+#destino { padding:10px; font-size:16px; border-radius:8px; border:1px solid #ccc; width:100%; box-sizing:border-box; }
+button { padding:10px; font-size:16px; border:none; border-radius:8px; background-color:#0196B4; color:white; cursor:pointer; transition:0.3s; }
+button:hover { background-color:#016e8a; }
+#center-btn {
+    position:absolute; bottom:20px; right:20px; z-index:1001;
+    width:50px; height:50px; border-radius:50%; background-color:#0196B4; color:white;
+    font-size:24px; text-align:center; line-height:50px; cursor:pointer; box-shadow:0 2px 6px rgba(0,0,0,0.4);
+    transition:0.3s;
+}
+#center-btn:hover { background-color:#016e8a; }
+#legenda {
+    position:absolute; bottom:20px; left:20px; z-index:1001;
+    background: rgba(255,255,255,0.9); padding:10px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,0.3);
+    font-size:14px;
+}
+.legenda-item { display:flex; align-items:center; gap:5px; margin-bottom:5px; }
+.legenda-item span { display:inline-block; width:20px; height:20px; border-radius:50%; }
+.legenda-usuario { background: blue; }
+.legenda-parada { background: red; }
+.legenda-destino { background: green; }
+@media (max-width:600px){ #destino, button{ font-size:14px; } #center-btn{ width:40px; height:40px; font-size:20px; line-height:40px; } #legenda{ font-size:12px; } }
 </style>
 </head>
 <body>
@@ -57,121 +52,82 @@
 <div id="center-btn" onclick="centralizarUsuario()">📍</div>
 
 <div id="legenda">
-    <div class="legenda-item"><img src="https://cdn-icons-png.flaticon.com/512/64/64113.png" alt="Você"/> Você</div>
-    <div class="legenda-item"><img src="https://cdn-icons-png.flaticon.com/512/252/252025.png" alt="Parada"/> Parada</div>
-    <div class="legenda-item"><img src="https://cdn-icons-png.flaticon.com/512/684/684908.png" alt="Destino"/> Destino</div>
+    <div class="legenda-item"><span class="legenda-usuario"></span> Você</div>
+    <div class="legenda-item"><span class="legenda-parada"></span> Parada</div>
+    <div class="legenda-item"><span class="legenda-destino"></span> Destino</div>
 </div>
 
 <script>
 let map, userMarker, stopMarker, destMarker;
-let alertaEmitido=false, firstPosition=true, seguirUsuario=true;
+let alertaEmitido=false, seguirUsuario=true;
 
-// Inicializa mapa
+const icons = {
+    usuario: new L.Icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers/img/marker-icon-blue.png', shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+    parada: new L.Icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers/img/marker-icon-red.png', shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
+    destino: new L.Icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers/img/marker-icon-green.png', shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]})
+};
+
 function startMap(lat,lng){
     if(!map){
-        map = L.map('map').setView([lat,lng],16);
+        map=L.map('map').setView([lat,lng],16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'&copy; OpenStreetMap contributors' }).addTo(map);
-
         map.on('movestart',()=>{ seguirUsuario=false; });
 
-        userMarker = L.marker([lat,lng],{
-            title:"Você",
-            icon:L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png', iconSize:[32,32] })
-        }).addTo(map);
+        userMarker=L.marker([lat,lng],{icon:icons.usuario,title:"Você"}).addTo(map);
     }
 }
 
 function updateUser(lat,lng){
     if(userMarker){
-        if(firstPosition){ userMarker.setLatLng([lat,lng]); firstPosition=false; }
-        else{ animateMarker(userMarker,[userMarker.getLatLng(), L.latLng(lat,lng)],500); }
+        const pos=userMarker.getLatLng();
+        const distancia=Math.sqrt((lat-pos.lat)**2+(lng-pos.lng)**2);
+        if(distancia>0.00001){ userMarker.setLatLng([lat,lng]); if(seguirUsuario) map.setView([lat,lng]); }
     }
-}
-
-function animateMarker(marker,latlngs,duration){
-    let start=null;
-    const [startLatLng,endLatLng]=latlngs;
-    function step(timestamp){
-        if(!start) start=timestamp;
-        const progress=Math.min((timestamp-start)/duration,1);
-        const lat=startLatLng.lat+(endLatLng.lat-startLatLng.lat)*progress;
-        const lng=startLatLng.lng+(endLatLng.lng-startLatLng.lng)*progress;
-        marker.setLatLng([lat,lng]);
-        if(progress<1) requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
 }
 
 function calcularDistancia(lat1,lng1,lat2,lng2){
-    const R=6371000;
-    const toRad=x=>x*Math.PI/180;
-    const dLat=toRad(lat2-lat1);
-    const dLng=toRad(lng2-lng1);
+    const R=6371000; const toRad=x=>x*Math.PI/180;
+    const dLat=toRad(lat2-lat1); const dLng=toRad(lng2-lng1);
     const a=Math.sin(dLat/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
     const c=2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
     return R*c;
 }
 
 async function updateStop(lat,lng){
-    const destino=document.getElementById("destino").value;
-    if(!destino) return;
+    const destino=document.getElementById("destino").value; if(!destino) return;
     try{
         const url=`/nearest_stop/?lat=${lat}&lng=${lng}&destino=${encodeURIComponent(destino)}&raio=500`;
-        const resp=await fetch(url);
-        const data=await resp.json();
-        if(data.error) return;
+        const resp=await fetch(url); const data=await resp.json(); if(data.error) return;
 
         if(stopMarker) map.removeLayer(stopMarker);
         if(destMarker) map.removeLayer(destMarker);
 
-        stopMarker = L.marker([data.lat,data.lng],{
-            title:"Parada",
-            icon:L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/252/252025.png', iconSize:[32,32] })
-        }).addTo(map);
-
-        destMarker = L.marker([data.dest_lat,data.dest_lng],{
-            title:"Destino",
-            icon:L.icon({ iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize:[32,32] })
-        }).addTo(map);
+        stopMarker=L.marker([data.lat,data.lng],{icon:icons.parada,title:"Parada"}).addTo(map);
+        destMarker=L.marker([data.dest_lat,data.dest_lng],{icon:icons.destino,title:"Destino"}).addTo(map);
 
         const distancia=calcularDistancia(lat,lng,data.lat,data.lng);
         if(distancia<=50 && !alertaEmitido){
-            alertaEmitido=true;
-            alert("🚌 Sua parada é a próxima!");
-            const msg=new SpeechSynthesisUtterance("Sua parada é a próxima!");
-            window.speechSynthesis.speak(msg);
+            alertaEmitido=true; alert("🚌 Sua parada é a próxima!");
+            const msg=new SpeechSynthesisUtterance("Sua parada é a próxima!"); window.speechSynthesis.speak(msg);
         }
     }catch(err){ console.warn("Erro ao buscar parada: "+err); }
 }
 
-function centralizarUsuario(){
-    if(userMarker && map){ map.setView(userMarker.getLatLng()); seguirUsuario=true; }
-}
+function centralizarUsuario(){ if(userMarker && map){ map.setView(userMarker.getLatLng()); seguirUsuario=true; } }
 
 function startTracking(){
     if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(
-            pos=>{
-                const lat=pos.coords.latitude;
-                const lng=pos.coords.longitude;
-                startMap(lat,lng);
-                updateUser(lat,lng);
-                updateStop(lat,lng);
-
+            pos=>{ const lat=pos.coords.latitude; const lng=pos.coords.longitude;
+                startMap(lat,lng); updateUser(lat,lng); updateStop(lat,lng);
                 navigator.geolocation.watchPosition(
-                    pos=>{
-                        const lat=pos.coords.latitude;
-                        const lng=pos.coords.longitude;
-                        updateUser(lat,lng);
-                        updateStop(lat,lng);
-                        if(seguirUsuario) map.setView([lat,lng]);
-                    },
+                    pos=>{ const lat=pos.coords.latitude; const lng=pos.coords.longitude; updateUser(lat,lng); updateStop(lat,lng); },
                     err=>console.warn("Erro ao atualizar localização: "+err.message),
-                    { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
+                    { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
                 );
             },
             err=>console.warn("Erro ao pegar localização inicial: "+err.message),
-            { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
+            { enableHighAccuracy:true, maximumAge:0, timeout:10000 }
         );
     } else { console.warn("Seu navegador não suporta geolocalização."); }
 }
