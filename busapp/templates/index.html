@@ -98,7 +98,13 @@ function startMap(lat, lng){
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        userMarker = L.marker([lat,lng], {title:"Você"}).addTo(map);
+        userMarker = L.marker([lat,lng], {
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/1077/1077012.png',
+                iconSize:[32,32]
+            }),
+            title:"Você"
+        }).addTo(map);
     }
 }
 
@@ -151,34 +157,22 @@ async function updateStop(lat,lng){
         const url = `/nearest_stop/?lat=${lat}&lng=${lng}&destino=${encodeURIComponent(destino)}&raio=500`;
         const resp = await fetch(url);
         const data = await resp.json();
-        
-        if(data.error){
-            alert("⚠️ Endereço não encontrado ou incompleto. Por favor, digite o endereço completo, incluindo número.");
-            return;
-        }
-
-        // Validar se está dentro do Brasil (aprox.)
-        if(data.dest_lat > 5 || data.dest_lat < -35 || data.dest_lng < -75 || data.dest_lng > -34){
-            alert("⚠️ Endereço retornou localização fora do Brasil. Verifique o que digitou.");
-            return;
-        }
+        if(data.error) return;
 
         if(stopMarker) map.removeLayer(stopMarker);
         if(destMarker) map.removeLayer(destMarker);
 
         stopMarker = L.marker([data.lat, data.lng], {
             icon: L.icon({
-                iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61088.png', // parada de ônibus
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61088.png',
                 iconSize:[32,32]
             }),
             title:"Parada"
-        }).addTo(map)
-          .bindPopup("Parada mais próxima").openPopup();
+        }).addTo(map);
 
-        // Ícone de bandeira para destino
         destMarker = L.marker([data.dest_lat, data.dest_lng], {
             icon: L.icon({
-                iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png', // bandeira
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/616/616408.png',
                 iconSize:[32,32]
             }),
             title:"Destino"
@@ -191,10 +185,7 @@ async function updateStop(lat,lng){
             alert("🚌 Sua parada é a próxima!");
             const msg = new SpeechSynthesisUtterance("Sua parada é a próxima!");
             window.speechSynthesis.speak(msg);
-        } else if(distancia > 60){
-            alertaEmitido = false;
         }
-
     } catch(err){
         console.warn("Erro ao buscar parada: " + err);
     }
@@ -217,7 +208,7 @@ function startTracking(){
                         const lng = pos.coords.longitude;
                         updateUser(lat,lng);
                         updateStop(lat,lng);
-                        map.setView([lat,lng]); // centraliza automaticamente
+                        map.setView([lat,lng]);
                     },
                     err => console.warn("Erro ao atualizar localização: " + err.message),
                     { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
