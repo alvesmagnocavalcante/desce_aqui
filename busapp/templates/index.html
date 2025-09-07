@@ -65,6 +65,32 @@
         background-color: #016e8a;
     }
 
+    #legend {
+        position: absolute;
+        bottom: 20px;
+        left: 10px;
+        background: rgba(255,255,255,0.9);
+        padding: 10px;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        z-index: 1000;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 4px;
+    }
+
+    .legend-color {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+
     @media (max-width: 600px) {
         #destino, button {
             font-size: 14px;
@@ -81,6 +107,12 @@
     <button onclick="startTracking()">Iniciar rastreamento</button>
 </div>
 
+<div id="legend">
+    <div class="legend-item"><span class="legend-color" style="background: blue;"></span> Você</div>
+    <div class="legend-item"><span class="legend-color" style="background: red;"></span> Parada de ônibus</div>
+    <div class="legend-item"><span class="legend-color" style="background: green;"></span> Destino</div>
+</div>
+
 <script>
 let map, userMarker, stopMarker, destMarker;
 let alertaEmitido = false;
@@ -91,6 +123,11 @@ window.onload = function() {
     alert("⚠️ Digite o endereço completo, incluindo o número. Assim podemos indicar corretamente a parada de ônibus mais próxima do seu destino e avisar quando for a sua hora de descer.");
 };
 
+// Pins personalizados
+const bluePin = L.icon({iconUrl: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png', iconSize:[32,32], iconAnchor:[16,32]});
+const redPin  = L.icon({iconUrl: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png', iconSize:[32,32], iconAnchor:[16,32]});
+const greenPin= L.icon({iconUrl: 'https://maps.google.com/mapfiles/ms/icons/green-dot.png', iconSize:[32,32], iconAnchor:[16,32]});
+
 // Inicializa mapa
 function startMap(lat, lng){
     if(!map){
@@ -100,42 +137,14 @@ function startMap(lat, lng){
         }).addTo(map);
 
         // Marcador do usuário - azul
-        userMarker = L.circleMarker([lat,lng], {
-            color: 'blue',
-            radius: 10,
-            fillColor: 'blue',
-            fillOpacity: 0.8
-        }).addTo(map).bindPopup("Você").openPopup();
+        userMarker = L.marker([lat,lng], {icon: bluePin}).addTo(map).bindPopup("Você").openPopup();
     }
 }
 
 function updateUser(lat,lng){
     if(userMarker){
-        if(firstPosition){
-            userMarker.setLatLng([lat,lng]);
-            firstPosition = false;
-        } else {
-            const latlngs = [userMarker.getLatLng(), L.latLng(lat,lng)];
-            animateMarker(userMarker, latlngs, 500);
-        }
+        userMarker.setLatLng([lat,lng]);
     }
-}
-
-// Animação suave do marcador
-function animateMarker(marker, latlngs, duration){
-    let start = null;
-    const [startLatLng, endLatLng] = latlngs;
-
-    function step(timestamp){
-        if(!start) start = timestamp;
-        const progress = Math.min((timestamp - start)/duration, 1);
-        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat)*progress;
-        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng)*progress;
-        marker.setLatLng([lat,lng]);
-        if(progress < 1) requestAnimationFrame(step);
-    }
-
-    requestAnimationFrame(step);
 }
 
 // Haversine em metros
@@ -163,21 +172,8 @@ async function updateStop(lat,lng){
         if(stopMarker) map.removeLayer(stopMarker);
         if(destMarker) map.removeLayer(destMarker);
 
-        // Marcador parada - vermelho
-        stopMarker = L.circleMarker([data.lat, data.lng], {
-            color: 'red',
-            radius: 10,
-            fillColor: 'red',
-            fillOpacity: 0.8
-        }).addTo(map).bindPopup("Parada");
-
-        // Marcador destino - verde
-        destMarker = L.circleMarker([data.dest_lat, data.dest_lng], {
-            color: 'green',
-            radius: 10,
-            fillColor: 'green',
-            fillOpacity: 0.8
-        }).addTo(map).bindPopup("Destino: " + destino);
+        stopMarker = L.marker([data.lat, data.lng], {icon:redPin}).addTo(map).bindPopup("Parada de ônibus");
+        destMarker = L.marker([data.dest_lat, data.dest_lng], {icon:greenPin}).addTo(map).bindPopup("Destino: " + destino);
 
         const distancia = calcularDistancia(lat, lng, data.lat, data.lng);
         if(distancia <= 50 && !alertaEmitido){
