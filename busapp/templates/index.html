@@ -86,6 +86,11 @@ let map, userMarker, stopMarker, destMarker;
 let alertaEmitido = false;
 let firstPosition = true;
 
+// ⚠️ Alerta inicial sobre endereço completo
+window.onload = function() {
+    alert("⚠️ Dica: digite o endereço completo, incluindo o número, para localizar corretamente a parada de ônibus.");
+};
+
 // Inicializa mapa
 function startMap(lat, lng){
     if(!map){
@@ -189,7 +194,7 @@ function startTracking(){
                         const lng = pos.coords.longitude;
                         updateUser(lat,lng);
                         updateStop(lat,lng);
-                        map.setView([lat,lng]); // centraliza automaticamente no usuário
+                        map.setView([lat,lng]); // centraliza automaticamente
                     },
                     err => console.warn("Erro ao atualizar localização: " + err.message),
                     { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
