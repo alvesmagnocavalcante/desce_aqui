@@ -3,6 +3,15 @@ from django.http import JsonResponse
 import requests
 from geopy.distance import geodesic
 
+# Lista de servidores Overpass (fallback automático)
+OVERPASS_SERVERS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.openstreetmap.ru/api/interpreter"
+]
+
+HEADERS = {"User-Agent": "MeuAppBuscaOnibus/1.0"}
+
 # Página inicial
 def index(request):
     return render(request, "index.html")
@@ -21,8 +30,11 @@ def nearest_stop(request):
     if destino:
         url = "https://nominatim.openstreetmap.org/search"
         params = {"q": destino, "format": "json", "limit": 1}
-        headers = {"User-Agent": "MeuAppBuscaOnibus/1.0"}
-        resp = requests.get(url, params=params, headers=headers)
+        try:
+            resp = requests.get(url, params=params, headers=HEADERS, timeout=20)
+        except requests.RequestException:
+            return JsonResponse({"error": "Erro de rede ao acessar Nominatim"}, status=500)
+
         if resp.status_code != 200 or not resp.json():
             return JsonResponse({"error": "Destino não encontrado"}, status=404)
         dest_data = resp.json()[0]
@@ -37,13 +49,20 @@ def nearest_stop(request):
     node["highway"="bus_stop"](around:{raio_m},{dest_lat},{dest_lng});
     out;
     """
-    response = requests.post("https://overpass-api.de/api/interpreter", data={"data": query})
-    if response.status_code != 200:
-        return JsonResponse({"error": "Erro ao buscar paradas"}, status=500)
 
-    elements = response.json().get("elements", [])
+    elements = []
+    for server in OVERPASS_SERVERS:
+        try:
+            response = requests.post(server, data={"data": query}, headers=HEADERS, timeout=30)
+            if response.status_code == 200:
+                elements = response.json().get("elements", [])
+                if elements:
+                    break  # sucesso, sai do loop
+        except requests.RequestException:
+            continue  # tenta o próximo servidor
+
     if not elements:
-        return JsonResponse({"error": "Nenhuma parada encontrada"}, status=404)
+        return JsonResponse({"error": "Nenhuma parada encontrada ou erro no Overpass"}, status=404)
 
     # --- Encontrar a parada mais próxima do destino ---
     nearest = min(elements, key=lambda p: geodesic((dest_lat, dest_lng), (p["lat"], p["lon"])).meters)
