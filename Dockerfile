@@ -15,16 +15,15 @@ RUN apt-get update && apt-get install -y \
 # --- Diretório de trabalho ---
 WORKDIR /app
 
-# --- Copia arquivos de requirements ---
+# --- Copia arquivos ---
 COPY requirements.txt /app/
 RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements.txt
 
-# --- Copia todo o projeto ---
 COPY . /app/
 
-# --- Expõe porta padrão do Render ---
+# --- Expõe porta ---
 EXPOSE 8000
 
-# --- Comando para rodar Django com Gunicorn usando porta dinâmica do Render ---
-CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:$PORT", "--workers", "3"]
+# --- Comando para rodar o servidor Django ---
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
