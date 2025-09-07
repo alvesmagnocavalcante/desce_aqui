@@ -17,7 +17,7 @@ body, html { margin:0; padding:0; height:100%; font-family: Arial, sans-serif; o
     box-shadow:0 2px 8px rgba(0,0,0,0.3); display:flex; flex-direction:column; gap:10px;
     z-index:1000; width:90%; max-width:400px; box-sizing:border-box;
 }
-#destino { padding:10px; font-size:16px; border-radius:8px; border:1px solid #ccc; width:100%; box-sizing:border-box; }
+#destino, #distancia { padding:10px; font-size:16px; border-radius:8px; border:1px solid #ccc; width:100%; box-sizing:border-box; }
 button { padding:10px; font-size:16px; border:none; border-radius:8px; background-color:#0196B4; color:white; cursor:pointer; transition:0.3s; }
 button:hover { background-color:#016e8a; }
 #center-btn {
@@ -37,7 +37,7 @@ button:hover { background-color:#016e8a; }
 .legenda-usuario { background: blue; }
 .legenda-parada { background: red; }
 .legenda-destino { background: green; }
-@media (max-width:600px){ #destino, button{ font-size:14px; } #center-btn{ width:40px; height:40px; font-size:20px; line-height:40px; } #legenda{ font-size:12px; } }
+@media (max-width:600px){ #destino, #distancia, button{ font-size:14px; } #center-btn{ width:40px; height:40px; font-size:20px; line-height:40px; } #legenda{ font-size:12px; } }
 </style>
 </head>
 <body>
@@ -46,6 +46,7 @@ button:hover { background-color:#016e8a; }
 
 <div id="controls">
     <input type="text" id="destino" placeholder="Digite o endereço de destino"/>
+    <input type="number" id="distancia" placeholder="Distância para alerta (ex: 100)" value="50"/>
     <button onclick="startTracking()">Iniciar rastreamento</button>
 </div>
 
@@ -95,6 +96,7 @@ function calcularDistancia(lat1,lng1,lat2,lng2){
 
 async function updateStop(lat,lng){
     const destino=document.getElementById("destino").value; if(!destino) return;
+    const distanciaAlerta=parseInt(document.getElementById("distancia").value)||50;
     try{
         const url=`/nearest_stop/?lat=${lat}&lng=${lng}&destino=${encodeURIComponent(destino)}&raio=500`;
         const resp=await fetch(url); const data=await resp.json(); if(data.error) return;
@@ -106,9 +108,11 @@ async function updateStop(lat,lng){
         destMarker=L.marker([data.dest_lat,data.dest_lng],{icon:icons.destino,title:"Destino"}).addTo(map);
 
         const distancia=calcularDistancia(lat,lng,data.lat,data.lng);
-        if(distancia<=50 && !alertaEmitido){
-            alertaEmitido=true; alert("🚌 Sua parada é a próxima!");
-            const msg=new SpeechSynthesisUtterance("Sua parada é a próxima!"); window.speechSynthesis.speak(msg);
+        if(distancia<=distanciaAlerta && !alertaEmitido){
+            alertaEmitido=true; 
+            alert("🚌 Você está próximo da sua parada!");
+            const msg=new SpeechSynthesisUtterance("Você está próximo da sua parada!");
+            window.speechSynthesis.speak(msg);
         }
     }catch(err){ console.warn("Erro ao buscar parada: "+err); }
 }
@@ -116,6 +120,7 @@ async function updateStop(lat,lng){
 function centralizarUsuario(){ if(userMarker && map){ map.setView(userMarker.getLatLng()); seguirUsuario=true; } }
 
 function startTracking(){
+    alertaEmitido=false; // reset a cada novo rastreamento
     if(navigator.geolocation){
         navigator.geolocation.getCurrentPosition(
             pos=>{ const lat=pos.coords.latitude; const lng=pos.coords.longitude;
