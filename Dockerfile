@@ -26,5 +26,5 @@ COPY . /app/
 # --- Expõe porta padrão do Render ---
 EXPOSE 8000
 
-# --- Comando para rodar Django com Gunicorn ---
-CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
+# --- Comando para rodar Django com Gunicorn usando porta dinâmica do Render ---
+CMD ["gunicorn", "app.wsgi:application", "--bind", "0.0.0.0:$PORT", "--workers", "3"]
