@@ -99,15 +99,13 @@ function startMap(lat, lng){
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Marcador do usuário
-        userMarker = L.marker([lat,lng], {
-            icon: L.icon({
-                iconUrl: 'https://cdn-icons-png.flaticon.com/512/1077/1077012.png', // ícone pessoa
-                iconSize: [32, 32],
-                iconAnchor: [16, 32]
-            }),
-            title:"Você"
-        }).addTo(map);
+        // Marcador do usuário - azul
+        userMarker = L.circleMarker([lat,lng], {
+            color: 'blue',
+            radius: 10,
+            fillColor: 'blue',
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup("Você").openPopup();
     }
 }
 
@@ -165,26 +163,21 @@ async function updateStop(lat,lng){
         if(stopMarker) map.removeLayer(stopMarker);
         if(destMarker) map.removeLayer(destMarker);
 
-        // Marcador parada
-        stopMarker = L.marker([data.lat, data.lng], {
-            icon: L.icon({
-                iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61088.png', // ônibus
-                iconSize:[32,32],
-                iconAnchor: [16,32]
-            }),
-            title:"Parada"
-        }).addTo(map);
+        // Marcador parada - vermelho
+        stopMarker = L.circleMarker([data.lat, data.lng], {
+            color: 'red',
+            radius: 10,
+            fillColor: 'red',
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup("Parada");
 
-        // Marcador destino
-        destMarker = L.marker([data.dest_lat, data.dest_lng], {
-            icon: L.icon({
-                iconUrl:'https://cdn-icons-png.flaticon.com/512/616/616408.png', // bandeira
-                iconSize:[32,32],
-                iconAnchor: [16,32]
-            }),
-            title:"Destino"
-        }).addTo(map)
-          .bindPopup("Destino: " + destino).openPopup();
+        // Marcador destino - verde
+        destMarker = L.circleMarker([data.dest_lat, data.dest_lng], {
+            color: 'green',
+            radius: 10,
+            fillColor: 'green',
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup("Destino: " + destino);
 
         const distancia = calcularDistancia(lat, lng, data.lat, data.lng);
         if(distancia <= 50 && !alertaEmitido){
