@@ -87,6 +87,36 @@
         background-color: #016e8a;
     }
 
+    #legenda {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        z-index: 1001;
+        background: rgba(255,255,255,0.9);
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        font-size: 14px;
+    }
+
+    .legenda-item {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+
+    .pin {
+        width: 16px;
+        height: 16px;
+        display: inline-block;
+        border-radius: 50%;
+    }
+
+    .pin-user { background-color: #0196B4; }
+    .pin-stop { background-color: #FF7D19; }
+    .pin-dest { background-color: #3D322D; }
+
     @media (max-width: 600px) {
         #destino, button {
             font-size: 14px;
@@ -96,6 +126,9 @@
             height: 40px;
             font-size: 20px;
             line-height: 40px;
+        }
+        #legenda {
+            font-size: 12px;
         }
     }
 </style>
@@ -110,6 +143,12 @@
 </div>
 
 <div id="center-btn" onclick="centralizarUsuario()">📍</div>
+
+<div id="legenda">
+    <div class="legenda-item"><span class="pin pin-user"></span> Você</div>
+    <div class="legenda-item"><span class="pin pin-stop"></span> Parada</div>
+    <div class="legenda-item"><span class="pin pin-dest"></span> Destino</div>
+</div>
 
 <script>
 let map, userMarker, stopMarker, destMarker;
@@ -130,12 +169,15 @@ function startMap(lat, lng){
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
-        // Evento para detectar quando o usuário navega no mapa
+        // Detecta quando o usuário navega manualmente
         map.on('movestart', () => { seguirUsuario = false; });
 
         userMarker = L.marker([lat,lng], {
             title:"Você",
-            icon: L.icon({iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png', iconSize:[32,32]})
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/64/64113.png',
+                iconSize:[32,32]
+            })
         }).addTo(map);
     }
 }
@@ -196,12 +238,18 @@ async function updateStop(lat,lng){
 
         stopMarker = L.marker([data.lat, data.lng], {
             title:"Parada",
-            icon: L.icon({iconUrl:'https://cdn-icons-png.flaticon.com/512/252/252025.png', iconSize:[32,32]})
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/252/252025.png',
+                iconSize:[32,32]
+            })
         }).addTo(map);
 
         destMarker = L.marker([data.dest_lat, data.dest_lng], {
             title:"Destino",
-            icon: L.icon({iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize:[32,32]})
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+                iconSize:[32,32]
+            })
         }).addTo(map);
 
         const distancia = calcularDistancia(lat, lng, data.lat, data.lng);
