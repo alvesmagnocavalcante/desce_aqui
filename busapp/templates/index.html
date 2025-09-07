@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚌 Onde devo descer?</title>
+
+<!-- Leaflet CSS e JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<style>
+    body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        font-family: 'Arial', sans-serif;
+        overflow: hidden;
+    }
+
+    #map {
+        height: 100%;
+        width: 100%;
+    }
+
+    #controls {
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255,255,255,0.95);
+        padding: 10px;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 1000;
+        width: 90%;
+        max-width: 400px;
+        box-sizing: border-box;
+    }
+
+    #destino {
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    button {
+        padding: 10px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        background-color: #0196B4;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s;
+    }
+
+    button:hover {
+        background-color: #016e8a;
+    }
+
+    @media (max-width: 600px) {
+        #destino, button {
+            font-size: 14px;
+        }
+    }
+</style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="controls">
+    <input type="text" id="destino" placeholder="Digite o endereço de destino"/>
+    <button onclick="startTracking()">Iniciar rastreamento</button>
+</div>
+
+<script>
+let map, userMarker, stopMarker, destMarker;
+let alertaEmitido = false;
+let firstPosition = true;
+
+// Inicializa mapa
+function startMap(lat, lng){
+    if(!map){
+        map = L.map('map').setView([lat,lng], 16);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+        userMarker = L.marker([lat,lng], {title:"Você"}).addTo(map);
+    }
+}
+
+function updateUser(lat,lng){
+    if(userMarker){
+        if(firstPosition){
+            userMarker.setLatLng([lat,lng]);
+            firstPosition = false;
+        } else {
+            const latlngs = [userMarker.getLatLng(), L.latLng(lat,lng)];
+            animateMarker(userMarker, latlngs, 500);
+        }
+    }
+}
+
+// Animação suave do marcador
+function animateMarker(marker, latlngs, duration){
+    let start = null;
+    const [startLatLng, endLatLng] = latlngs;
+
+    function step(timestamp){
+        if(!start) start = timestamp;
+        const progress = Math.min((timestamp - start)/duration, 1);
+        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat)*progress;
+        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng)*progress;
+        marker.setLatLng([lat,lng]);
+        if(progress < 1) requestAnimationFrame(step);
+    }
+
+    requestAnimationFrame(step);
+}
+
+// Haversine em metros
+function calcularDistancia(lat1, lng1, lat2, lng2) {
+    const R = 6371000;
+    const toRad = x => x * Math.PI / 180;
+    const dLat = toRad(lat2-lat1);
+    const dLng = toRad(lng2-lng1);
+    const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLng/2)**2;
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+// Atualiza parada e destino
+async function updateStop(lat,lng){
+    const destino = document.getElementById("destino").value;
+    if(!destino) return;
+
+    try {
+        const url = `/nearest_stop/?lat=${lat}&lng=${lng}&destino=${encodeURIComponent(destino)}&raio=500`;
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if(data.error) return;
+
+        if(stopMarker) map.removeLayer(stopMarker);
+        if(destMarker) map.removeLayer(destMarker);
+
+        stopMarker = L.marker([data.lat, data.lng], {title:"Parada"}).addTo(map);
+        destMarker = L.marker([data.dest_lat, data.dest_lng], {
+            title:"Destino",
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+                iconSize:[32,32]
+            })
+        }).addTo(map);
+
+        const distancia = calcularDistancia(lat, lng, data.lat, data.lng);
+        if(distancia <= 50 && !alertaEmitido){
+            alertaEmitido = true;
+            alert("🚌 Sua parada é a próxima!");
+            const msg = new SpeechSynthesisUtterance("Sua parada é a próxima!");
+            window.speechSynthesis.speak(msg);
+        }
+    } catch(err){
+        console.warn("Erro ao buscar parada: " + err);
+    }
+}
+
+// Inicia rastreamento
+function startTracking(){
+    if(navigator.geolocation){
+        navigator.geolocation.getCurrentPosition(
+            pos => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                startMap(lat,lng);
+                updateUser(lat,lng);
+                updateStop(lat,lng);
+
+                navigator.geolocation.watchPosition(
+                    pos => {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        updateUser(lat,lng);
+                        updateStop(lat,lng);
+                        map.setView([lat,lng]); // centraliza automaticamente no usuário
+                    },
+                    err => console.warn("Erro ao atualizar localização: " + err.message),
+                    { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
+                );
+            },
+            err => console.warn("Erro ao pegar localização inicial: " + err.message),
+            { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
+        );
+    } else {
+        console.warn("Seu navegador não suporta geolocalização.");
+    }
+}
+</script>
+
+</body>
+</html>
