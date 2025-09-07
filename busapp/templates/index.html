@@ -28,8 +28,9 @@
         top: 10px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(255,255,255,0.95);
-        padding: 10px;
+        background: rgba(255,255,255,0.85);
+        backdrop-filter: blur(5px);
+        padding: 12px;
         border-radius: 12px;
         box-shadow: 0 2px 8px rgba(0,0,0,0.3);
         display: flex;
@@ -98,7 +99,14 @@ function startMap(lat, lng){
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
-        userMarker = L.marker([lat,lng], {title:"Você"}).addTo(map);
+
+        userMarker = L.marker([lat,lng], {
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/1077/1077012.png',
+                iconSize:[32,32]
+            }),
+            title:"Você"
+        }).addTo(map);
     }
 }
 
@@ -156,14 +164,23 @@ async function updateStop(lat,lng){
         if(stopMarker) map.removeLayer(stopMarker);
         if(destMarker) map.removeLayer(destMarker);
 
-        stopMarker = L.marker([data.lat, data.lng], {title:"Parada"}).addTo(map);
+        stopMarker = L.marker([data.lat, data.lng], {
+            icon: L.icon({
+                iconUrl:'https://cdn-icons-png.flaticon.com/512/61/61088.png',
+                iconSize:[32,32]
+            }),
+            title:"Parada"
+        }).addTo(map)
+          .bindPopup("Parada mais próxima").openPopup();
+
         destMarker = L.marker([data.dest_lat, data.dest_lng], {
-            title:"Destino",
             icon: L.icon({
                 iconUrl:'https://cdn-icons-png.flaticon.com/512/684/684908.png',
                 iconSize:[32,32]
-            })
-        }).addTo(map);
+            }),
+            title:"Destino"
+        }).addTo(map)
+          .bindPopup("Destino: " + destino).openPopup();
 
         const distancia = calcularDistancia(lat, lng, data.lat, data.lng);
         if(distancia <= 50 && !alertaEmitido){
@@ -171,6 +188,8 @@ async function updateStop(lat,lng){
             alert("🚌 Sua parada é a próxima!");
             const msg = new SpeechSynthesisUtterance("Sua parada é a próxima!");
             window.speechSynthesis.speak(msg);
+        } else if(distancia > 60){
+            alertaEmitido = false; // permite novo alerta se se afastar
         }
     } catch(err){
         console.warn("Erro ao buscar parada: " + err);
@@ -194,7 +213,7 @@ function startTracking(){
                         const lng = pos.coords.longitude;
                         updateUser(lat,lng);
                         updateStop(lat,lng);
-                        map.setView([lat,lng]); // centraliza automaticamente
+                        map.flyTo([lat,lng], map.getZoom());
                     },
                     err => console.warn("Erro ao atualizar localização: " + err.message),
                     { enableHighAccuracy:true, maximumAge:10000, timeout:30000 }
