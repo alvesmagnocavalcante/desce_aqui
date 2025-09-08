@@ -110,7 +110,7 @@ async function updateStop(lat,lng){
         const distancia=calcularDistancia(lat,lng,data.lat,data.lng);
         if(distancia<=distanciaAlerta && !alertaEmitido){
             alertaEmitido=true; 
-            alert("🚌 Você está próximo da sua parada!");
+            //alert("🚌 Você está próximo da sua parada!");
             const msg=new SpeechSynthesisUtterance("Você está próximo da sua parada!");
             window.speechSynthesis.speak(msg);
         }
