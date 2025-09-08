@@ -62,11 +62,6 @@ button:hover { background-color:#016e8a; }
 let map, userMarker, stopMarker, destMarker;
 let alertaEmitido=false, seguirUsuario=true;
 
-// ⚠️ Alerta inicial ao abrir a página
-window.onload = function() {
-    alert("⚠️ Digite o endereço completo, incluindo o número, para ser mais preciso. Isso ajuda a localizar corretamente a parada de ônibus. Nosso objetivo é indicar a parada mais próxima do seu destino.");
-};
-
 const icons = {
     usuario: new L.Icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers/img/marker-icon-blue.png', shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
     parada: new L.Icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers/img/marker-icon-red.png', shadowUrl:'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png', iconSize:[25,41], iconAnchor:[12,41], popupAnchor:[1,-34], shadowSize:[41,41]}),
@@ -115,6 +110,7 @@ async function updateStop(lat,lng){
         const distancia=calcularDistancia(lat,lng,data.lat,data.lng);
         if(distancia<=distanciaAlerta && !alertaEmitido){
             alertaEmitido=true; 
+            //alert("🚌 Você está próximo da sua parada!");
             const msg=new SpeechSynthesisUtterance("Você está próximo da sua parada!");
             window.speechSynthesis.speak(msg);
         }
@@ -140,4 +136,7 @@ function startTracking(){
         );
     } else { console.warn("Seu navegador não suporta geolocalização."); }
 }
-</script
+</script>
+
+</body>
+</html>
